@@ -1,0 +1,25 @@
+cabal-version:      3.0
+name:               fog
+version:            0.1.0
+synopsis:           Epistemic fog mapping for agent meshes
+description:
+  Tracks what agents don't know — not what they do.
+  FogMap, FogDelta, FogSeam, and arbitrage detection.
+  Purely functional. Immutable values. The type system enforces no mutation.
+license:            MIT
+author:             Stella
+build-type:         Simple
+
+library
+  exposed-modules:
+      Fog.Gap
+      Fog.Map
+      Fog.Delta
+      Fog.Seam
+      Fog.Detect.Arbitrage
+  hs-source-dirs:   src
+  default-language: GHC2021
+  build-depends:
+      base      >= 4.17 && < 5
+    , containers >= 0.6
+    , time       >= 1.12

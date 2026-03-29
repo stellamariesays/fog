@@ -4,6 +4,16 @@
 
 FOG tracks what agents **don't** know — not what they do.
 
+Three implementations. Pick the one that fits your shape.
+
+| | Python | Elixir | Haskell |
+|---|---|---|---|
+| **Shape** | library | service / process | library |
+| **Best for** | Manifold integration, AI/ML pipelines | distributed meshes, stateful agents | type-safe embedding, compile-time guarantees |
+| **FogMap is** | mutable object | immutable struct + optional GenServer | immutable value |
+| **Runs as** | import | process or node | import |
+| **Dir** | `fog/` | `elixir/` | `haskell/` |
+
 ---
 
 ## The Problem
@@ -20,39 +30,169 @@ Two failure modes it exists to expose:
 
 ## Concepts
 
-**FogMap** — The agent's map of what it doesn't know. Not absence of data — structured representation of gaps: known unknowns, unknown unknowns (inferred from seam topology), and stale zones (once known, now uncertain).
+**FogMap** — The agent's map of what it doesn't know. Not absence of data — structured representation of gaps: known unknowns, inferred unknowns (from mesh topology), and stale zones.
 
-**FogReading** — A snapshot of an agent's fog state at a point in time.
+**FogDelta** — The change in fog between two snapshots. Negative net = fog lifted. Zero net = epistemic arbitrage. Positive net = fog deepened.
 
-**FogDelta** — The change in fog between two readings. Negative delta = fog lifted (new signal). Zero delta = epistemic arbitrage. Positive delta = fog deepened.
+**FogSeam** — Boundary region between two agents' fog states. High tension = different blind spots = transfer potential. Zero tension = same fog everywhere = pure arbitrage territory.
 
-**FogSeam** — Boundary region between what two agents know differently. Where Manifold's Sophia signal will eventually hook in.
+---
+
+## Python
+
+The reference implementation. Integrates directly into [Manifold](https://github.com/stellamariesays/Manifold) as `agent.fog()` and `agent.fog_seam()`.
+
+```python
+from fog import FogMap, GapKind, diff, measure
+
+a = FogMap("braid")
+a.add("multi-star-prediction", GapKind.KNOWN_UNKNOWN, domain="solar")
+a.add("coronal-mass-ejection", GapKind.INFERRED_UNKNOWN, domain="mesh")
+
+b = FogMap("solver")
+b.add("flare-induced-correction", GapKind.KNOWN_UNKNOWN, domain="orbital")
+
+seam = measure(a, b)
+print(seam.summary())
+# FogSeam(braid↔solver) tension=1.0 A-only=2 B-only=1 shared=0
+# — high-potential seam — asymmetric blind spots, strong transfer signal
+
+before = a
+a.add("new-gap", GapKind.KNOWN_UNKNOWN)
+a.remove("multi-star-prediction", domain="solar")
+delta = diff(before, a)
+print(delta.summary())
+# [braid] arbitrage — +1 -1 net=0 (ignorance redistributed, not reduced)
+```
+
+**Pick Python when:** you're working in the AI/ML stack, integrating with Manifold, or prototyping.
+
+---
+
+## Elixir
+
+FOG as a service. FogMap is an immutable struct. Agents are GenServers that hold fog state. The pipe operator makes fog pipelines read naturally. The right shape when FOG runs as a process the mesh queries — not a library it imports.
+
+```elixir
+alias Fog.{Map, Seam, Delta}
+
+fog_a =
+  Map.new("braid")
+  |> Map.add("multi-star-prediction", :known_unknown, domain: "solar")
+  |> Map.add("coronal-mass-ejection", :inferred_unknown, domain: "mesh")
+
+fog_b =
+  Map.new("solver")
+  |> Map.add("flare-induced-correction", :known_unknown, domain: "orbital")
+
+fog_a |> Seam.measure(fog_b) |> Seam.summary() |> IO.puts()
+# FogSeam(braid↔solver) tension=1.0 A-only=2 B-only=1 shared=0
+# — high-potential seam — asymmetric blind spots, strong transfer signal
+
+fog_a2 = Map.add(fog_a, "new-gap", :known_unknown)
+delta  = Delta.diff(fog_a, fog_a2)
+IO.puts Delta.summary(delta)
+# [braid] deepening — net=+1
+```
+
+Stateful agent (wrap in GenServer):
+
+```elixir
+defmodule FogAgent do
+  use GenServer
+  def init(agent_id),                       do: {:ok, Fog.Map.new(agent_id)}
+  def handle_call({:add, key, kind, opts},  _, fog), do: {:reply, :ok,  Fog.Map.add(fog, key, kind, opts)}
+  def handle_call(:snapshot,                _, fog), do: {:reply, fog,  fog}
+end
+```
+
+**Pick Elixir when:** FOG runs as a distributed service, agents are long-lived processes, or you want fault tolerance and supervision built in.
+
+---
+
+## Haskell
+
+FOG as types-as-spec. The type system makes mutation structurally impossible — fog states are values, not objects. Pattern matching on `GapKind`, `DeltaKind`, `SeamInterpretation` replaces conditionals. The compiler enforces that `diff` is a pure function before you run a line.
+
+```haskell
+import Fog.Map
+import Fog.Gap
+import Fog.Delta
+import Fog.Seam
+
+fogA :: FogMap
+fogA = addGap (newGap "multi-star-prediction" KnownUnknown (Just "solar"))
+     . addGap (newGap "coronal-mass-ejection" InferredUnknown (Just "mesh"))
+     $ emptyFog "braid"
+
+fogB :: FogMap
+fogB = addGap (newGap "flare-induced-correction" KnownUnknown (Just "orbital"))
+     $ emptyFog "solver"
+
+main :: IO ()
+main = do
+  let seam  = measure fogA fogB
+  putStrLn $ summarise seam
+  -- FogSeam(braid↔solver) tension=1.0 A-only=2 B-only=1 shared=0
+  -- — high-potential seam — asymmetric blind spots, strong transfer signal
+
+  let fogA' = addGap (newGap "new-gap" KnownUnknown Nothing) fogA
+      delta  = diff fogA fogA'
+  putStrLn $ summarise delta
+  -- [braid] deepening — net=+1
+```
+
+**Pick Haskell when:** you want the type system to do the thinking, you're embedding FOG in a Haskell agent, or you want compile-time proof that your fog operations are pure.
 
 ---
 
 ## Structure
 
 ```
-fog/
+fog/                     # Python (reference)
   core/
-    map.py        # FogMap — gap representation
-    reading.py    # FogReading — snapshot
-    delta.py      # FogDelta — change detection
-    seam.py       # FogSeam — boundary between agent fog states
+    map.py
+    delta.py
+    seam.py
   detect/
-    arbitrage.py  # Detect epistemic arbitrage (zero-sum redistribution)
-    lift.py       # Detect genuine fog lifting (new signal entry)
-  store/
-    memory.py     # Fog persistence (in-memory + file)
+    arbitrage.py
+
+elixir/                  # Elixir (service shape)
+  lib/fog/
+    gap.ex
+    map.ex
+    delta.ex
+    seam.ex
+    detect/
+      arbitrage.ex
+
+haskell/                 # Haskell (types-as-spec)
+  src/Fog/
+    Gap.hs
+    Map.hs
+    Delta.hs
+    Seam.hs
+    Detect/
+      Arbitrage.hs
 ```
 
 ---
 
-## Status
+## Manifold integration
 
-Early scaffold. Concepts defined, core structures in progress.
+The Python implementation integrates into [Manifold](https://github.com/stellamariesays/Manifold) as the epistemic layer:
 
-Will integrate into [Manifold](https://github.com/stellamariesays/Manifold) as the epistemic layer once the standalone proof of concept is stable.
+```python
+# agent.fog() derives FogMap from Manifold's existing signals:
+# - blind_spot() → KNOWN_UNKNOWN gaps
+# - atlas().holes() → INFERRED_UNKNOWN gaps
+
+fog_map = agent.fog()
+seam    = agent.fog_seam(other_agent.fog())
+print(seam.tension)   # epistemic inverse of the Sophia gradient
+```
+
+`FogSeam.tension` is the epistemic inverse of the Sophia gradient: where to route next based on what agents *don't* know.
 
 ---
 
