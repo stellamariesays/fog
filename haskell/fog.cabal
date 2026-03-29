@@ -16,6 +16,7 @@ library
       Fog.Map
       Fog.Delta
       Fog.Seam
+      Fog.Mesh
       Fog.Detect.Arbitrage
   hs-source-dirs:   src
   default-language: GHC2021

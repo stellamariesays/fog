@@ -17,6 +17,8 @@ defmodule Fog.Map do
 
   defstruct [:agent_id, gaps: %{}, created_at: nil]
 
+  @default_half_life 7 * 24 * 3600
+
   @doc "Create an empty FogMap for an agent."
   def new(agent_id) do
     %__MODULE__{agent_id: agent_id, created_at: System.system_time(:second)}
@@ -27,9 +29,8 @@ defmodule Fog.Map do
   If the gap key already exists, touches it (updates last_seen).
   """
   def add(%__MODULE__{} = fog, key, kind, opts \\ []) do
-    full_key = full_key(key, Keyword.get(opts, :domain))
-    updated_gaps =
-      Map.update(fog.gaps, full_key, Gap.new(full_key, kind, opts), &Gap.touch/1)
+    full_key     = full_key(key, Keyword.get(opts, :domain))
+    updated_gaps = Map.update(fog.gaps, full_key, Gap.new(full_key, kind, opts), &Gap.touch/1)
     %{fog | gaps: updated_gaps}
   end
 
@@ -50,6 +51,38 @@ defmodule Fog.Map do
 
   @doc "Number of gaps in this map."
   def size(%__MODULE__{} = fog), do: map_size(fog.gaps)
+
+  @doc """
+  Total effective ignorance — sum of all effective confidences.
+  Not normalised. Use to compare raw amounts of ignorance over time.
+  """
+  def fog_volume(%__MODULE__{} = fog, half_life \\ @default_half_life) do
+    fog.gaps
+    |> Map.values()
+    |> Enum.reduce(0.0, fn gap, acc -> acc + Gap.effective_confidence(gap, half_life) end)
+  end
+
+  @doc """
+  Shannon entropy of the fog distribution.
+      H = −Σ p_i log₂(p_i)   where p_i = eff_i / total_volume
+
+  High H: ignorance spread across many uncertain gaps.
+  Low H:  ignorance concentrated in a few high-confidence gaps.
+  H = 0:  single gap or empty map.
+  """
+  def entropy(%__MODULE__{} = fog, half_life \\ @default_half_life) do
+    effs  = fog.gaps |> Map.values() |> Enum.map(&Gap.effective_confidence(&1, half_life))
+    total = Enum.sum(effs)
+    if total == 0.0 do
+      0.0
+    else
+      effs
+      |> Enum.map(fn e -> e / total end)
+      |> Enum.reduce(0.0, fn p, acc ->
+           if p > 0, do: acc - p * :math.log2(p), else: acc
+         end)
+    end
+  end
 
   @doc "Group gaps by domain."
   def by_domain(%__MODULE__{} = fog) do

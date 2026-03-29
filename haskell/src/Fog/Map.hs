@@ -1,7 +1,7 @@
 -- | FogMap — the shape of what an agent doesn't know.
 --
 -- FogMap is an immutable value. All operations return new maps.
--- The type system makes mutation impossible — fog states are snapshots.
+-- The type system makes mutation impossible — fog states are values.
 module Fog.Map
   ( FogMap(..)
   , emptyFog
@@ -10,6 +10,8 @@ module Fog.Map
   , lookupGap
   , fogSize
   , fogKeys
+  , fogVolume
+  , fogEntropy
   , fullKey
   ) where
 
@@ -30,7 +32,7 @@ emptyFog :: String -> FogMap
 emptyFog agentId = FogMap { fogAgentId = agentId, fogGaps = Map.empty }
 
 -- | Add a gap. Returns a new FogMap.
--- If the key already exists, the gap is left unchanged (already dark there).
+-- If the key already exists, the existing gap is kept unchanged.
 addGap :: Gap -> FogMap -> FogMap
 addGap gap fog =
   let k = fullKey (gapKey gap) (gapDomain gap)
@@ -55,6 +57,38 @@ fogSize = Map.size . fogGaps
 -- | All gap keys as a Set.
 fogKeys :: FogMap -> Set String
 fogKeys = Map.keysSet . fogGaps
+
+-- | Total effective ignorance — sum of all effective confidences.
+-- Not normalised. Pass current time and half-life.
+--
+-- @fogVolume now defaultHalfLife myMap@
+fogVolume :: Double   -- ^ Current POSIX time (seconds)
+          -> Double   -- ^ Half-life in seconds
+          -> FogMap
+          -> Double
+fogVolume now hl fog =
+  Map.foldl' (\acc gap -> acc + effectiveConfidence now hl gap) 0.0 (fogGaps fog)
+
+-- | Shannon entropy of the fog distribution.
+--
+-- @
+-- H = −Σ p_i log₂(p_i)   where p_i = eff_i \/ total_volume
+-- @
+--
+-- High H: ignorance spread across many uncertain gaps.
+-- Low H:  ignorance concentrated in a few high-confidence gaps.
+-- H = 0:  single gap, or empty map.
+fogEntropy :: Double   -- ^ Current POSIX time (seconds)
+           -> Double   -- ^ Half-life in seconds
+           -> FogMap
+           -> Double
+fogEntropy now hl fog =
+  let effs  = map (effectiveConfidence now hl) (Map.elems (fogGaps fog))
+      total = sum effs
+  in if total == 0.0
+     then 0.0
+     else let ps = map (/ total) effs
+          in negate $ sum [ p * logBase 2 p | p <- ps, p > 0 ]
 
 -- | Build the canonical key from a key and optional domain.
 fullKey :: String -> Maybe String -> String

@@ -30,11 +30,26 @@ Two failure modes it exists to expose:
 
 ## Concepts
 
-**FogMap** — The agent's map of what it doesn't know. Not absence of data — structured representation of gaps: known unknowns, inferred unknowns (from mesh topology), and stale zones.
+**FogMap** — The agent's map of what it doesn't know. Gaps carry confidence weights that decay exponentially with time (half-life configurable, default 7 days). STALE gaps get an additional ×0.5 penalty.
 
-**FogDelta** — The change in fog between two snapshots. Negative net = fog lifted. Zero net = epistemic arbitrage. Positive net = fog deepened.
+**FogDelta** — Change between two snapshots. `net` = weighted volume change (negative = good). `entropy_delta` = change in fog *structure*, independent of volume.
 
-**FogSeam** — Boundary region between two agents' fog states. High tension = different blind spots = transfer potential. Zero tension = same fog everywhere = pure arbitrage territory.
+**FogSeam** — Boundary between two agents' fog states. `tension` = weighted asymmetric fraction. `kl_divergence` = directional structural distance. `js_divergence` = symmetric distance, bounded [0,1].
+
+**FogMesh** — Multi-agent layer. `propagate_lift` reduces confidence on inferred unknowns when a source agent learns. `dark_core` = gaps in every agent (needs external signal). `system_entropy` = total mesh ignorance shape.
+
+## Math
+
+| Concept | Formula |
+|---|---|
+| Temporal decay | `eff = conf × exp(−ln(2)/half_life × t)` |
+| Fog volume | `vol = Σ eff_i` |
+| Fog entropy | `H = −Σ (eff_i/vol) log₂(eff_i/vol)` |
+| Seam tension | `vol(asymmetric) / vol(total)` |
+| KL divergence | `Σ p_A log(p_A / p_B)` |
+| JS divergence | `½ KL(A∥M) + ½ KL(B∥M)` where `M=(A+B)/2` |
+| Arbitrage | churn with `\|net\| ≈ 0` |
+| Dark conservation | `Σ net_i ≈ 0` across all agents |
 
 ---
 
