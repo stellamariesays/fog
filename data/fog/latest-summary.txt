@@ -1,0 +1,1 @@
+3 agents | system fog volume=5.20 | H=3.26 | dark core=0 gaps | hottest seam: braid↔solar-detect tension=0.857 (high transfer potential)

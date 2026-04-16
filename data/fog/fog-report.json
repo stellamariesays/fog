@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-04-16T19:42:05.167759+00:00",
+  "mesh": {
+    "agents": 3,
+    "system_volume": 5.2,
+    "system_entropy": 3.26,
+    "dark_core_count": 0,
+    "dark_core": [],
+    "union_gaps": 7
+  },
+  "seam": {
+    "agent_a": "braid",
+    "agent_b": "solar-detect",
+    "tension": 0.8571,
+    "js_divergence": 0.7662,
+    "kl_a_to_b": 15.5416,
+    "a_only_count": 2,
+    "b_only_count": 2,
+    "shared_count": 1,
+    "summary": "FogSeam(braid\u2194solar-detect) tension=0.857 A-only=2 B-only=2 shared=1 KL(A\u2192B)=15.542 JS=0.766"
+  },
+  "arbitrage": {
+    "detected": false,
+    "agents_with_arbitrage": []
+  },
+  "summary": "3 agents | system fog volume=5.20 | H=3.26 | dark core=0 gaps | hottest seam: braid\u2194solar-detect tension=0.857 (high transfer potential)"
+}

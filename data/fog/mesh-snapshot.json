@@ -1,0 +1,29 @@
+{
+  "agents": [
+    {
+      "id": "stella",
+      "gaps": [
+        {"key": "braid-threshold", "kind": "known_unknown", "domain": "model", "confidence": 0.9},
+        {"key": "wake-resume-timeline", "kind": "known_unknown", "domain": "infra", "confidence": 0.7},
+        {"key": "architecture-migration-scope", "kind": "known_unknown", "domain": "infra", "confidence": 0.8},
+        {"key": "daikon-wallet", "kind": "known_unknown", "domain": "crypto", "confidence": 0.6}
+      ]
+    },
+    {
+      "id": "braid",
+      "gaps": [
+        {"key": "braid-threshold", "kind": "known_unknown", "domain": "model", "confidence": 1.0},
+        {"key": "training-data-cutoff", "kind": "inferred_unknown", "domain": "model", "confidence": 0.5},
+        {"key": "far-path-cascade-vs-retrain", "kind": "known_unknown", "domain": "model", "confidence": 0.85}
+      ]
+    },
+    {
+      "id": "solar-detect",
+      "gaps": [
+        {"key": "realtime-threshold-tuning", "kind": "known_unknown", "domain": "solar", "confidence": 0.75},
+        {"key": "architecture-migration-scope", "kind": "inferred_unknown", "domain": "infra", "confidence": 0.4},
+        {"key": "training-data-cutoff", "kind": "inferred_unknown", "domain": "model", "confidence": 0.4}
+      ]
+    }
+  ]
+}
