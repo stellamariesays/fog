@@ -100,6 +100,16 @@ def session_start():
     fog_report = read_fog_report()
     summary = read_latest_summary()
 
+    # Symlink numinous memory output if available
+    numinous_output = Path("/home/sophia/numinous/memory/output")
+    focus_link = MEMORY / "focus"
+    if numinous_output.is_dir() and not focus_link.exists():
+        try:
+            os.symlink(str(numinous_output), str(focus_link))
+            print(f"[session start] linked numinous output → memory/focus")
+        except OSError:
+            pass
+
     # --- Write MEMORY.md (the dynamic index) ---
     fog_line = summary if fog_ok else "Fog computation pending."
     seam_info = ""
