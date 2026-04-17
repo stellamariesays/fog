@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 
 MANIFOLD_URL = os.environ.get("MANIFOLD_URL", "http://localhost:8777")
 AGENT_NAME = "sentry"
-SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL", "60"))
+SCAN_INTERVAL = int(os.environ.get("SCAN_INTERVAL", "300"))
 EVENTS_DIR = os.path.join(os.path.dirname(__file__), "events")
+MAX_EVENTS_PER_FILE = 500  # rotate after this many lines
 
 # Routing map: pattern keyword → target agents
 ROUTING = {
@@ -97,13 +98,77 @@ def resolve_targets(circle_name: str) -> list[str]:
     return sorted(targets) if targets else ["stella"]
 
 
-def log_detection(detection: dict):
-    """Append detection to event log."""
+# Track last emitted state per detection key for dedup
+_last_state: dict[str, str] = {}
+DEDUP_FILE = os.path.join(os.path.dirname(__file__), "events", ".dedup-state.json")
+
+
+def load_dedup():
+    global _last_state
+    try:
+        if os.path.exists(DEDUP_FILE):
+            with open(DEDUP_FILE) as f:
+                _last_state = json.load(f)
+    except Exception:
+        _last_state = {}
+
+
+def save_dedup():
+    try:
+        os.makedirs(os.path.dirname(DEDUP_FILE), exist_ok=True)
+        with open(DEDUP_FILE, "w") as f:
+            json.dump(_last_state, f)
+    except Exception:
+        pass
+
+
+def detection_fingerprint(detection: dict) -> tuple[str, str]:
+    """Return (key, state_hash) for dedup. Only log if state changed."""
+    dtype = detection["type"]
+    if dtype == "dark-circle-pressure":
+        key = f"dcp:{detection['circle']}"
+        state = f"{detection['pressure']:.2f}:{','.join(sorted(detection.get('confirmed_by', [])))}"
+    elif dtype == "agent-missing":
+        key = "agent-missing"
+        state = ",".join(sorted(detection.get("missing", [])))
+    elif dtype == "peer-drop":
+        key = "peer-drop"
+        state = str(detection.get("peers", 0))
+    else:
+        key = dtype
+        state = json.dumps(detection, sort_keys=True)
+    return key, state
+
+
+def log_detection(detection: dict) -> bool:
+    """Append detection to event log if state changed since last emit.
+    Returns True if logged, False if deduplicated."""
+    key, state = detection_fingerprint(detection)
+    if _last_state.get(key) == state:
+        return False  # no change, skip
+    _last_state[key] = state
+
     os.makedirs(EVENTS_DIR, exist_ok=True)
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     path = os.path.join(EVENTS_DIR, f"{date_str}.jsonl")
+
+    # Rotate if too large
+    if os.path.exists(path):
+        with open(path) as f:
+            line_count = sum(1 for _ in f)
+        if line_count >= MAX_EVENTS_PER_FILE:
+            ts = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M%S")
+            new_path = os.path.join(EVENTS_DIR, f"{date_str}-{ts}.jsonl")
+            os.rename(path, new_path)
+            # Write summary of rotated file
+            summary_path = os.path.join(EVENTS_DIR, f"{date_str}-summary.json")
+            with open(summary_path, "w") as sf:
+                json.dump({"rotated_from": new_path, "at": ts}, sf)
+
     with open(path, "a") as f:
         f.write(json.dumps(detection) + "\n")
+    save_dedup()
+    return True
 
 
 def now_iso() -> str:
@@ -112,6 +177,7 @@ def now_iso() -> str:
 
 def run_once():
     """Single scan cycle."""
+    load_dedup()
     status = fetch("/status")
     dark = fetch("/dark-circles")
     agents_resp = fetch("/agents")
@@ -125,13 +191,17 @@ def run_once():
 
     detections = detect_patterns(status, dark_circles, agents)
 
+    logged = 0
     for d in detections:
-        log_detection(d)
-        targets = ", ".join(d.get("targets", []))
-        print(f"[detect] {d['type']} → {targets} | {json.dumps(d)[:120]}")
+        if log_detection(d):
+            logged += 1
+            targets = ", ".join(d.get("targets", []))
+            print(f"[detect] {d['type']} → {targets} | {json.dumps(d)[:120]}")
 
-    if not detections:
+    if logged == 0 and not detections:
         print(f"[scan] clean — {len(agents)} agents, {len(dark_circles)} circles, {status.get('peers',0)} peers")
+    elif logged == 0 and detections:
+        print(f"[scan] {len(detections)} patterns, 0 new (deduped)")
 
 
 def main():
