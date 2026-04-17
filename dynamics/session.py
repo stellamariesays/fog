@@ -76,9 +76,24 @@ def read_terrain_delta():
         return None
 
 
+def append_daily_log(ts, entry_lines):
+    """Append to today's session log."""
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    log_path = MEMORY / f"{today}.md"
+    if not log_path.exists():
+        log_path.write_text(f"# Session Log — {today}\n\n")
+    with open(log_path, 'a') as f:
+        f.write(f"\n## {ts}\n")
+        for line in entry_lines:
+            f.write(f"{line}\n")
+
+
 def session_start():
     """Generate fresh state files for a new session."""
     ts = now_iso()
+
+    # Ensure directories exist
+    (MEMORY / "entities").mkdir(parents=True, exist_ok=True)
 
     # Run fog computation
     fog_ok = run_fog_once()
@@ -139,6 +154,13 @@ def session_start():
 """
     (WORKSPACE / "HEARTBEAT.md").write_text(heartbeat_md)
 
+    # Append to daily log
+    log_lines = [f"Session started. Fog: {'ok' if fog_ok else 'FAILED'}.", f"Summary: {summary}"]
+    if fog_report and fog_report.get("seam"):
+        s = fog_report["seam"]
+        log_lines.append(f"Hottest seam: {s['agent_a']}↔{s['agent_b']} tension={s['tension']:.3f}")
+    append_daily_log(ts, log_lines)
+
     print(f"[session start] {ts} — fog {'ok' if fog_ok else 'FAILED'}, memory updated")
 
 
@@ -149,7 +171,6 @@ def session_end():
     summary = read_latest_summary()
 
     handoff = MEMORY / f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}-session-handoff.md"
-    void_state = read_void_state()
 
     lines = [
         f"# Session Handoff — {ts}",
@@ -166,6 +187,11 @@ def session_end():
         lines.append(f"- Seam: {s['agent_a']}↔{s['agent_b']} tension={s['tension']:.3f}")
 
     handoff.write_text("\n".join(lines))
+
+    # Append to daily log
+    log_lines = ["Session ended. Handoff written.", f"Fog: {summary}"]
+    append_daily_log(ts, log_lines)
+
     print(f"[session end] {ts} — handoff written to {handoff.name}")
 
 
