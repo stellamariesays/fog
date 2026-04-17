@@ -1,103 +1,30 @@
 # Void State — Current Dark Circles
-*Last scan: 2026-04-16 22:51 UTC*
+*Last scan: 2026-04-16 23:56 UTC*
+*Source: Manifold Federation REST API (:8777)*
 
-## Summary
-active reach — several implied regions at the edge of the mesh
+## Mesh Status
+- **thefog** (local): federation hub, Numinous on :8780
+- **sateliteA**: connected (Stella), 6 agents, last seen 23:55 UTC
+- **HOG**: connected (Eddie), 15 agents, last seen 23:55 UTC
+- **Total agents**: 21 | **Capabilities**: 134 | **Dark circles**: 9
 
-## Candidate Regions (15 found)
-- **[0.525]** `detection-tracking` — implied by: tracking, detection
-- **[0.471]** `detection-management` — implied by: management, detection
-- **[0.411]** `tracking-void` — implied by: tracking, void
-- **[0.411]** `integration-tracking` — implied by: tracking, integration
-- **[0.411]** `monitoring-tracking` — implied by: monitoring, tracking
-- **[0.411]** `threshold-tracking` — implied by: threshold, tracking
-- **[0.354]** `detection-strategy` — implied by: strategy, detection
-- **[0.354]** `analysis-detection` — implied by: analysis, detection
-- **[0.343]** `management-void` — implied by: management, void
-- **[0.343]** `integration-management` — implied by: management, integration
+## Active Dark Circles (from Manifold)
+| Circle | Pressure | Hubs Seeing It |
+|--------|----------|----------------|
+| alert-deployment | 1.0 | satelitea, hog |
+| data-detection | 1.0 | satelitea, hog |
+| deployment-detection | 1.0 | satelitea, hog |
+| detection-identity | 1.0 | satelitea, hog |
+| detection-management | 1.0 | satelitea, hog |
+| detection-modeling | 1.0 | satelitea, hog |
+| detection-solar | 1.0 | satelitea, hog |
 
-## Raw JSON
-```json
-[
-  {
-    "term": "detection-tracking",
-    "strength": 0.525,
-    "implied_by": [
-      "tracking",
-      "detection"
-    ]
-  },
-  {
-    "term": "detection-management",
-    "strength": 0.4714,
-    "implied_by": [
-      "management",
-      "detection"
-    ]
-  },
-  {
-    "term": "tracking-void",
-    "strength": 0.4107,
-    "implied_by": [
-      "tracking",
-      "void"
-    ]
-  },
-  {
-    "term": "integration-tracking",
-    "strength": 0.4107,
-    "implied_by": [
-      "tracking",
-      "integration"
-    ]
-  },
-  {
-    "term": "monitoring-tracking",
-    "strength": 0.4107,
-    "implied_by": [
-      "monitoring",
-      "tracking"
-    ]
-  },
-  {
-    "term": "threshold-tracking",
-    "strength": 0.4107,
-    "implied_by": [
-      "threshold",
-      "tracking"
-    ]
-  },
-  {
-    "term": "detection-strategy",
-    "strength": 0.3536,
-    "implied_by": [
-      "strategy",
-      "detection"
-    ]
-  },
-  {
-    "term": "analysis-detection",
-    "strength": 0.3536,
-    "implied_by": [
-      "analysis",
-      "detection"
-    ]
-  },
-  {
-    "term": "management-void",
-    "strength": 0.3429,
-    "implied_by": [
-      "management",
-      "void"
-    ]
-  },
-  {
-    "term": "integration-management",
-    "strength": 0.3429,
-    "implied_by": [
-      "management",
-      "integration"
-    ]
-  }
-]
-```
+*All 9 dark circles have pressure=1.0 — newly detected, no resolution movement yet.*
+
+## Key Seams (from fog integration)
+- **braid↔solar-detect**: tension=0.857 — highest seam tension in the mesh
+
+## Notes
+- Detection dominates the dark circles — the mesh knows it needs detection capabilities but hasn't consolidated ownership
+- Both sateliteA and HOG see the same dark circles — cross-validated, not artifacts
+- tracking-void and management-void from local fog scan align with Manifold's detection-management circle
