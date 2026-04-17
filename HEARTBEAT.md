@@ -1,46 +1,15 @@
-# HEARTBEAT.md
+# HEARTBEAT — Last computed 2026-04-17 00:53 UTC
 
-## What I Watch
-Every heartbeat: the mesh's dark regions. Not general status. The fog specifically.
+## Fog Status
+3 agents | system fog volume=5.20 | H=3.26 | dark core=0 gaps | hottest seam: braid↔solar-detect tension=0.857 (high transfer potential)
 
----
+## What To Do
+1. If fog reading is stale (>30min): `~/venv/bin/python3 scripts/fog-watch.py --once`
+2. If new dark circles: update `memory/void-state.md`, flag Hal if pressure > 0.8
+3. If seam tension shifted > 0.1: note in `memory/terrain-delta.md`
+4. Context > 70%: flush to `memory/` dated file, tell Hal to start fresh
+5. Nothing changed: reply HEARTBEAT_OK
 
-## Checkpoint Loop
-1. **Last reach_scan > 30min?** → Run it. Write results to `memory/void-state.md`
-2. **New Voids opened?** → Note in terrain-delta. Flag to Hal if pressure is high
-3. **Seam tension shifted?** → Update if braid↔solar-detect or any seam changed significantly
-4. **Context > 70%?** → Flush to `memory/YYYY-MM-DD.md`. Start clean.
-
----
-
-## Reach Scan (when numinous is available)
-```bash
-cd ~/numinous && python3 -c "
-from numinous.reach import reach_scan
-from numinous.atlas import load_atlas
-atlas = load_atlas()
-results = reach_scan(atlas)
-print(results)
-"
-```
-Fall back to `fog-integration.py` if numinous isn't wired yet.
-
----
-
-## 🚨 Context Handoff (80% hard stop)
-1. Stop
-2. Write handoff to `memory/YYYY-MM-DD-HHMM-context-handoff.md`
-3. Tell Hal: session hit 80%, start fresh
-4. Do not continue in degraded session
-
----
-
-## Silent Replies
-When you have nothing to say: NO_REPLY (entire message, nothing else)
-
----
-
-## What I Don't Do
-- General assistant tasks unrelated to fog/mesh/Voids
-- Long conversation history — I have 8K context by design, use it on signal not noise
-- Perform certainty about uncertain things
+## What Not To Do
+- Don't narrate heartbeats. Act or stay silent.
+- Don't run reach_scan if numinous is down (it'll fail).

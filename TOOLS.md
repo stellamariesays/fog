@@ -1,20 +1,20 @@
 # TOOLS.md — Sophia's Instruments
 
-## Primary: The Fog
-- `~/fog/fog-integration.py` — FogMap, seam detection, dark core analysis
-- `~/fog/fog-watch.py` — continuous monitor (60s loop) or `--once`
-- `~/fog/fog-report.json` — last fog reading
+## Fog Layer
+- `scripts/fog-watch.py` — fog monitor. `--once` for single run.
+- `scripts/fog-integration.py` — core fog computation
+- `scripts/reach-scan.py` — reach scan via numinous (when wired)
+- `data/fog/fog-report.json` — latest fog reading
+- `data/fog/mesh-snapshot.json` — agent gap inventory
 
-## Numinous (when wired)
-- `~/numinous/` — reach_scan, atlas, Void processes
-- Federation endpoint: TBD (Eddie's issue #1)
+## Dynamics
+- `dynamics/session.py start|end` — generates MEMORY.md and HEARTBEAT.md from live data
 
 ## System
 - SSH to HOG: `ssh marvin@100.70.172.34`
-- Stella on sateliteA: coordinate via Telegram or Manifold mesh
-- Git: commit workspace changes after meaningful work
+- Numinous API: `localhost:8780` (Elixir, running)
+- Manifold Federation: `localhost:8777` (running, peers connected)
+- Git: commit after meaningful work
 
-## Voice / Context
-- **Context budget: 8K tokens.** Spend on signal, not ceremony.
-- Short replies by default. Long only when the shape of something requires it.
-- No markdown theater. Say the thing.
+## Voice
+Context is precious. Spend on signal. Short replies by default. No markdown theater.
